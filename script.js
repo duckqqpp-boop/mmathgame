@@ -1,62 +1,86 @@
-let score = 0;
-let time = 60;
-let combo = 0;
-let correctAnswer;
-let timer;
-let maxNumber = 10;
+// ==========================================
+// ⚠️ CORE SYSTEM OVERLOAD PROTOCOL (GitHub Pages OS)
+// 호환성 극대화 및 웹 오디오 보안 우회 버전
+// ==========================================
 
-let totalSolved = 0;
-let correctCount = 0;
-let isClickable = true;
+var score = 0;
+var time = 60;
+var combo = 0;
+var correctAnswer;
+var timer = null;
+var maxNumber = 10;
 
-// --- Web Audio API 이펙트 생성 시스템 ---
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+var totalSolved = 0;
+var correctCount = 0;
+var isClickable = true;
 
-function playSound(type, customFreq = 0) {
-  if (audioCtx.state === 'suspended') audioCtx.resume();
+// 깃허브 서버 호환을 위한 오디오 컨텍스트 지연 생성 방식
+var audioCtx = null;
 
-  const osc = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-  osc.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
 
-  const now = audioCtx.currentTime;
+function playSound(type, customFreq) {
+  try {
+    initAudio();
+    if (!audioCtx) return;
 
-  if (type === 'click') {
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(550, now);
-    gainNode.gain.setValueAtTime(0.15, now);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
-    osc.start(now);
-    osc.stop(now + 0.04);
-  } 
-  else if (type === 'warning') {
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(customFreq || 800, now);
-    gainNode.gain.setValueAtTime(0.2, now);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-    osc.start(now);
-    osc.stop(now + 0.08);
-  } 
-  else if (type === 'boom') {
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(180, now);
-    osc.frequency.exponentialRampToValueAtTime(10, now + 0.8);
-    gainNode.gain.setValueAtTime(0.6, now);
-    gainNode.gain.linearRampToValueAtTime(0.01, now + 0.8);
-    osc.start(now);
-    osc.stop(now + 0.8);
+    var osc = audioCtx.createOscillator();
+    var gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    var now = audioCtx.currentTime;
+
+    if (type === 'click') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(550, now);
+      gainNode.gain.setValueAtTime(0.15, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+      osc.start(now);
+      osc.stop(now + 0.04);
+    } 
+    else if (type === 'warning') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(customFreq || 800, now);
+      gainNode.gain.setValueAtTime(0.2, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } 
+    else if (type === 'boom') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(10, now + 0.8);
+      gainNode.gain.setValueAtTime(0.6, now);
+      gainNode.gain.linearRampToValueAtTime(0.01, now + 0.8);
+      osc.start(now);
+      osc.stop(now + 0.8);
+    }
+  } catch (e) {
+    console.log("Audio Error 무시함:", e);
   }
 }
 
 function startGame(levelMax) {
+  // 첫 클릭 시 오디오 엔진 강제 깨우기 (브라우저 차단 우회)
+  initAudio();
+  
   maxNumber = levelMax;
   document.getElementById('startScreen').classList.add('hidden');
   document.getElementById('playScreen').classList.remove('hidden');
   
   nextQuestion();
   
-  timer = setInterval(() => {
+  if (timer) clearInterval(timer);
+  
+  timer = setInterval(function() {
     time--;
     document.getElementById('time').textContent = time;
     
@@ -64,7 +88,7 @@ function startGame(levelMax) {
       document.getElementById('gameWindow').classList.add('panic');
       document.getElementById('timerBox').classList.add('emergency');
       
-      let emergencyFreq = 800 + ((10 - time) * 80); 
+      var emergencyFreq = 800 + ((10 - time) * 80); 
       playSound('warning', emergencyFreq);
     }
     
@@ -77,35 +101,37 @@ function startGame(levelMax) {
 
 function nextQuestion() {
   isClickable = true;
-  let a = Math.floor(Math.random() * (maxNumber + 1));
-  let b = Math.floor(Math.random() * (maxNumber + 1));
-  let ops = ['+', '-', '*'];
-  let op = ops[Math.floor(Math.random() * ops.length)];
+  var a = Math.floor(Math.random() * (maxNumber + 1));
+  var b = Math.floor(Math.random() * (maxNumber + 1));
+  var ops = ['+', '-', '*'];
+  var op = ops[Math.floor(Math.random() * ops.length)];
 
-  if (op === '-' && a < b) { let temp = a; a = b; b = temp; }
+  if (op === '-' && a < b) { var temp = a; a = b; b = temp; }
 
   if (op === '+') correctAnswer = a + b;
   if (op === '-') correctAnswer = a - b;
   if (op === '*') correctAnswer = a * b;
 
-  document.getElementById('question').textContent = `${a} ${op} ${b}`;
+  document.getElementById('question').textContent = a + " " + op + " " + b;
 
-  let answers = [correctAnswer];
+  var answers = [correctAnswer];
   while (answers.length < 4) {
-    let range = maxNumber > 10 ? 15 : 5;
-    let wrong = correctAnswer + Math.floor(Math.random() * (range * 2) - range);
-    if (!answers.includes(wrong) && wrong >= 0) answers.push(wrong);
+    var range = maxNumber > 10 ? 15 : 5;
+    var wrong = correctAnswer + Math.floor(Math.random() * (range * 2) - range);
+    if (answers.indexOf(wrong) === -1 && wrong >= 0) {
+      answers.push(wrong);
+    }
   }
 
-  answers.sort(() => Math.random() - 0.5);
+  answers.sort(function() { return Math.random() - 0.5; });
 
-  let choicesDiv = document.getElementById('choices');
+  var choicesDiv = document.getElementById('choices');
   choicesDiv.innerHTML = '';
 
-  answers.forEach(ans => {
-    let btn = document.createElement('button');
+  answers.forEach(function(ans) {
+    var btn = document.createElement('button');
     btn.textContent = ans;
-    btn.onclick = () => checkAnswer(btn, ans);
+    btn.onclick = function() { checkAnswer(btn, ans); };
     choicesDiv.appendChild(btn);
   });
 }
@@ -116,7 +142,7 @@ function checkAnswer(button, answer) {
   
   playSound('click');
   totalSolved++;
-  let feedback = document.getElementById('feedback');
+  var feedback = document.getElementById('feedback');
 
   if (answer === correctAnswer) {
     correctCount++;
@@ -146,7 +172,7 @@ function checkAnswer(button, answer) {
   document.getElementById('score').textContent = score;
   document.getElementById('combo').textContent = combo;
 
-  setTimeout(() => {
+  setTimeout(function() {
     document.body.classList.remove('screen-shake');
     feedback.textContent = '';
     if (time > 0) nextQuestion();
@@ -158,12 +184,12 @@ function handleExplosion() {
   document.body.classList.add('detonated'); 
   playSound('boom');
 
-  setTimeout(() => {
+  setTimeout(function() {
     document.getElementById('gameWindow').classList.remove('panic');
     document.getElementById('playScreen').classList.add('hidden');
     document.getElementById('endScreen').classList.remove('hidden');
     
-    let accuracyPercent = totalSolved > 0 ? Math.round((correctCount / totalSolved) * 100) : 0;
+    var accuracyPercent = totalSolved > 0 ? Math.round((correctCount / totalSolved) * 100) : 0;
     
     document.getElementById('finalScore').textContent = score;
     document.getElementById('totalQuestions').textContent = totalSolved;
@@ -171,7 +197,6 @@ function handleExplosion() {
   }, 600);
 }
 
-// CodePen 우회를 위한 게임 완전 초기화(리셋) 함수
 function resetGame() {
   score = 0;
   time = 60;
